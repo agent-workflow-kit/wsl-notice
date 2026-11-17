@@ -36,7 +36,7 @@
         2,
         null
       ],
-      "description": "1 or 2; null for a dry run."
+      "description": "Number of PowerShell spawns, 1 or 2; null for a dry run."
     },
     "dedupe_key": {
       "oneOf": [

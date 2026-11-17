@@ -11,7 +11,7 @@ wsl-notice is an awkit L1 primitive: it shows a Windows toast from a process run
 1. `../awkit-docs/architecture.md`: this tool's §5.1 entry and its §20 entry (constraints and open topics), plus the cross-cutting sections listed in `docs/design.md`.
 2. `../awkit-docs/design-guide.md`: the conventions every awkit tool follows.
 3. `docs/interface.md`: the single normative source for this tool's rules.
-4. `docs/design.md`: decisions, modules and test strategy; `docs/plan.md`: the staged plan (once written).
+4. `docs/design.md`: decisions, modules and test strategy; `docs/plan.md`: the staged plan.
 
 ## Rules
 
@@ -23,6 +23,8 @@ wsl-notice is an awkit L1 primitive: it shows a Windows toast from a process run
 - Run `make verify` before every commit.
 - All subprocess calls go through `src/wsl_notice/gateway.py`, so tests can substitute fakes (a fake `powershell.exe` lives in `tests/fakebin/`).
 - Never run destructive git commands (reset, checkout --, clean, restore, stash drop, force-push). Never kill processes by pattern; signal only the exact child this tool started and the process group it created.
+- The 0.1.0 release is gated on a person seeing a toast under the default identity (`docs/plan.md`, stage 0).
+- No environment overrides and no `PATH` search for PowerShell: `powershell_bin` is an absolute path from config.
 - Untrusted text travels only in files or stdin, never argv or env.
 - Minimize dependencies; justify each one in `docs/design.md`.
 

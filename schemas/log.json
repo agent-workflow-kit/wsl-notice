@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "wsl-notice/log.json",
   "title": "wsl-notice log.jsonl record",
-  "description": "One record per send that reaches input reading (step 3) or later and ends in sent, refused (exit 20), failed (exit 12 except unknown) or outcome_unknown. Not logged: exit 1, exit 2, exit 22 (disabled) and dry runs. A log write failure warns only. Never a title, message or link.",
+  "description": "One record per outcome that reaches input reading (step 3) or later: sent, refused (exit 20), outcome_unknown (exit 12 whenever unknown_outcome is true) or failed (any other exit 12). Not logged: exit 1, exit 2, exit 22 (disabled) and dry runs. A log write failure warns only. Never a title, message or link.",
   "type": "object",
   "properties": {
     "ts": {
@@ -77,10 +77,7 @@
       ]
     },
     "duration_ms": {
-      "type": [
-        "integer",
-        "null"
-      ],
+      "type": "integer",
       "minimum": 0
     },
     "attempts": {
@@ -88,7 +85,8 @@
         1,
         2,
         null
-      ]
+      ],
+      "description": "Number of PowerShell spawns; null when nothing was spawned."
     },
     "message_sha256": {
       "oneOf": [
@@ -99,7 +97,7 @@
           "type": "null"
         }
       ],
-      "description": "First 16 hex of the SHA-256 of the notification JSON; null before one exists."
+      "description": "First 16 hex of the SHA-256 of sanitized title, LF, sanitized message; null when not computed."
     },
     "dedupe_key_sha256": {
       "oneOf": [
@@ -233,10 +231,10 @@
           },
           "code": {
             "enum": [
+              "not_wsl",
               "tool_missing",
               "toast_failed",
-              "interop_failed",
-              "state_unsafe"
+              "interop_failed"
             ]
           }
         }

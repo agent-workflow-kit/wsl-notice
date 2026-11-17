@@ -2,11 +2,15 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "wsl-notice/cli/validate.json",
   "title": "validate output",
-  "description": "Printed with --json when the config loads. ok is true only when every check passes (exit 0); otherwise it is printed with ok false and the exit code of the first failing check (20 with a reason, 12 for tool or host problems). When the config cannot load, the error envelope is printed instead (exit 2). With --probe: powershell_version and start_ms; with --test-message: a check named test_message.",
+  "description": "Printed with --json when the config loads. validate never prompts. A failed check ends the run, so ok is true only when every printed check is ok (exit 0); otherwise ok is false and the exit code is that of the failing check (12 or 20). When the config cannot load, the error envelope is printed instead (exit 2). With --probe: powershell_version and start_ms; with --test-message: a check named test_message. A disabled tool with --probe or --test-message prints {outcome: disabled} (send.json) and exits 22.",
   "type": "object",
   "properties": {
     "ok": {
       "type": "boolean"
+    },
+    "enabled": {
+      "type": "boolean",
+      "description": "The configured value."
     },
     "checks": {
       "type": "array",
@@ -14,9 +18,14 @@
         "type": "object",
         "properties": {
           "name": {
-            "type": "string",
-            "pattern": "^[a-z][a-z0-9_]{0,63}$",
-            "description": "For example config, wsl, powershell, test_message (the --test-message result)."
+            "enum": [
+              "config",
+              "platform",
+              "powershell",
+              "probe",
+              "test_message"
+            ],
+            "description": "In this order; a failed check ends the run."
           },
           "ok": {
             "type": "boolean"
@@ -47,6 +56,7 @@
   },
   "required": [
     "ok",
+    "enabled",
     "checks"
   ],
   "additionalProperties": false,

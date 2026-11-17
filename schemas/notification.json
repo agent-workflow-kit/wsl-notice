@@ -2,18 +2,17 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "wsl-notice/notification.json",
   "title": "wsl-notice notification",
-  "description": "Input to send (stdin JSON or --file). Syntactic gate only: the sanitizer, the post-sanitizing empty-message check and the link scheme exit codes are applied by the tool.",
+  "description": "Input to send (stdin JSON or --file). Syntactic gate only: the sanitizer, the post-sanitizing empty-message check (message has no minLength here) and the link reasons are applied by the tool.",
   "type": "object",
   "properties": {
     "title": {
       "type": "string",
       "maxLength": 100000,
       "x-untrusted": true,
-      "description": "One line (newlines become spaces); at most 100000 characters of input (else exit 20 invalid_payload); cut to max_title characters at render time."
+      "description": "One line (the sanitizer turns newlines into spaces); at most 100000 characters of input (else exit 20 invalid_payload); cut to max_title characters at render time."
     },
     "message": {
       "type": "string",
-      "minLength": 1,
       "maxLength": 100000,
       "x-untrusted": true,
       "description": "At most 100000 characters of input (else exit 20 invalid_payload); must not be empty after sanitizing (exit 20 empty_message)."
@@ -25,9 +24,9 @@
     "link": {
       "type": "string",
       "maxLength": 1024,
-      "pattern": "^[Hh][Tt][Tt][Pp](?:[Ss])?://[^/?#@\\s\\u0000-\\u001f\\u007f]+(?:[/?#][^\\s\\u0000-\\u001f\\u007f]*)?$",
+      "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://[\\x21-\\x7e]+$",
       "x-untrusted": true,
-      "description": "http or https URL, no whitespace or control characters, no userinfo."
+      "description": "Coarse gate for the link rule: 1 to 1024 printable ASCII characters, http or https scheme (case-insensitive). The tool is authoritative (structure, port, userinfo, link_scheme versus link_invalid, link_hosts)."
     }
   },
   "required": [
