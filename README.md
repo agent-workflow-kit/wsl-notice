@@ -34,10 +34,10 @@ wsl-notice validate --probe --test-message   # shows one test toast; look at you
 
 | Command | Purpose |
 |---|---|
-| `wsl-notice send [--stdin-json \| --file <path>\|-] [--title <t>] [--message <m>] [--level <l>] [--link <url>] [--dedupe-key <k>]` | Show one toast. |
-| `wsl-notice validate [--probe] [--test-message]` | Check the config, WSL and PowerShell; `validate` never prompts. `--probe` also starts PowerShell once to print its version, `--test-message` shows one test toast (look at your screen; it needs no terminal). Exits 0 when every check passes, otherwise with the exit code of the failing check. |
+| `wsl-notice send [--stdin-json \| --file <path>\|-] [--title <t>] [--message <m>] [--level <l>] [--link <url>] [--dedupe-key <k>] [--decision-id <id>]` | Show one toast. |
+| `wsl-notice validate [--probe] [--test-message]` | Check the config, WSL and PowerShell; `validate` never prompts. `--probe` also starts PowerShell once to print its version, `--test-message` shows one test toast (look at your screen; it needs no terminal). Plain `validate` ignores `enabled` except to report it, so a disabled tool still reports its config and environment faults and exits by its checks; `--probe` and `--test-message` on a disabled tool make no call and exit 22. Exits 0 when every check passes, otherwise with the exit code of the failing check. |
 
-Global flags: `--json`, `--config`, `--dry-run`, `--actor`, `--decision-id`, `--verbose`, `--quiet`, `--version` ([Global flags](docs/interface.md#global-flags)).
+Global flags: `--json`, `--config`, `--dry-run`, `--actor`, `--verbose`, `--quiet`, `--version` ([Global flags](docs/interface.md#global-flags)). Flags are exact: abbreviations are not accepted, and a value that starts with `-` needs the `--flag=value` form.
 
 ## How text is passed
 
@@ -45,21 +45,23 @@ Notification text never appears in a command line or in an environment variable.
 
 ## Exit codes
 
-0 handed to Windows (or a dry run); 1 internal error; 2 usage or invalid config; 12 failed (`not_wsl`, PowerShell missing, toast failed, interop failed, timeout with unknown outcome); 20 the payload was refused, code `refused` with a `reason` (`invalid_payload`, `empty_message`, `link_invalid`, `link_scheme`); 22 disabled in config (a successful no-op, `{"outcome": "disabled"}`). Every `send` that reaches input validation and ends in `sent`, a refusal or a failure is logged; dry runs and exit 22 are not. See [Exit codes](docs/interface.md#exit-codes).
+0 handed to Windows (or a dry run); 1 internal error; 2 usage or invalid config; 12 failed (`not_wsl`, PowerShell missing, toast failed, interop failed, `outcome_unknown` when the child ended without a known result or the deadline passed after it started); 20 the payload was refused, code `refused` with a `reason` (`invalid_payload`, `empty_message`, `link_invalid`, `link_scheme`); 22 disabled in config (a successful no-op, `{"outcome": "disabled"}`). Every `send` that reaches input validation and ends in `sent`, a refusal or a failure is logged; dry runs and exit 22 are not. See [Exit codes](docs/interface.md#exit-codes).
 
 ## Limits
 
 - The call completes with exit 0 and the toast is added to the Windows notification history, but on-screen display under the default identity is not yet confirmed; 0.1.0 is gated on a person seeing one. Output says `sent`, never `displayed`. Windows does not tell PowerShell whether a toast appeared, was dismissed or was suppressed by Focus Assist or do-not-disturb, so a person has to look. An unregistered `app_id` can show nothing without an error.
 - Each call starts a Windows process, about one second.
+- `outcome_unknown` is not retryable: a caller that retries after it may show two toasts, because a duplicate is worse than a lost toast. A start slower than `timeout` (default 10s) ends as `outcome_unknown`; raise `timeout` if that happens.
+- WSL1 is not tested.
 - With `link_hosts` unset a producer can aim the tap target at any web address; the toast does not show the URL.
 - Other processes of the same Windows user can read the notification from the notification history; do not send secrets.
-- Not supported: native Windows, Linux desktops and macOS (separate tools), PowerShell 7, custom icons, sounds, buttons, images and progress bars. See [Residual risks](docs/interface.md#residual-risks).
+- Not supported: native Windows, WSL1 (not tested), Linux desktops and macOS (separate tools), PowerShell 7, custom icons, sounds, buttons, images and progress bars. See [Residual risks](docs/interface.md#residual-risks).
 
 ## Config, hooks and environment
 
-- Config: `~/.config/wsl-notice/config.yaml` plus `config.d/*.yaml`; every key is documented in [config.example.yaml](config.example.yaml) and [Config](docs/interface.md#config).
+- Config: `.config/wsl-notice/config.yaml` under your home directory (taken from the password database; `HOME` and `XDG_CONFIG_HOME` are not read) plus `config.d/*.yaml` beside it; `--config <path>` selects another file, which is what a cron line uses for a non-default place; every key is documented in [config.example.yaml](config.example.yaml) and [Config](docs/interface.md#config).
 - Hooks: none in 0.x ([Hooks](docs/interface.md#hooks)).
-- Environment: there are no `WSL_NOTICE_<KEY>` overrides; precedence is flags, config, defaults. wsl-notice reads no credentials ([Environment variables](docs/interface.md#environment-variables)).
+- Environment: there are no `WSL_NOTICE_<KEY>` overrides and no variable selects the config; precedence is flags, config, defaults. The state directory is `$XDG_STATE_HOME/wsl-notice` (an absolute path) or `.local/state/wsl-notice` under the home directory. wsl-notice reads no credentials ([Environment variables](docs/interface.md#environment-variables)).
 - Calling from a script or agent: see [Calling from automation](docs/interface.md#calling-from-automation).
 
 ## Requirements
@@ -75,7 +77,7 @@ Notification text never appears in a command line or in an environment variable.
 2. Check Windows Settings, System, Notifications, and that "Windows PowerShell" is allowed to notify.
 3. Check Focus Assist or Do Not Disturb.
 4. Try another `app_id` in config; an identity that is not registered shows nothing and gives no error.
-5. If `validate` reports a stale interop socket (a long-lived tmux or cron job), start the command from a fresh shell.
+5. If `validate --probe` says the fallback socket was used or reports an interop failure, start the command from a fresh shell.
 
 ## Install
 

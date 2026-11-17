@@ -16,12 +16,12 @@
     "ts": {
       "type": "string",
       "format": "date-time",
-      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}[Tt][0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?(?:[Zz]|[+-][0-9]{2}:[0-9]{2})$",
-      "description": "RFC 3339."
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z(?![\\s\\S])",
+      "description": "UTC, YYYY-MM-DDTHH:MM:SS.mmmZ."
     },
     "hex16": {
       "type": "string",
-      "pattern": "^[0-9a-f]{16}$",
+      "pattern": "^[0-9a-f]{16}(?![\\s\\S])",
       "description": "First 16 hex characters of a SHA-256."
     },
     "dedupe_key": {
@@ -32,7 +32,7 @@
     },
     "actor": {
       "type": "string",
-      "pattern": "^(human|auto):[A-Za-z0-9._@/-]{1,64}$",
+      "pattern": "^(human|auto):[A-Za-z0-9._@/-]{1,64}(?![\\s\\S])",
       "description": "human:<user> or auto:<name>. Advisory against same-user processes."
     },
     "actor_source": {
@@ -45,7 +45,7 @@
     },
     "stage": {
       "type": "string",
-      "pattern": "^(decode|json|xml|show|unknown|exit_[0-9]{1,10})$",
+      "pattern": "^(decode|json|xml|show|unknown)(?![\\s\\S])",
       "description": "The constant script's failure token, unknown for exit 3 with other stderr."
     },
     "exit_code": {
@@ -107,7 +107,7 @@
         },
         "app_id": {
           "type": "string",
-          "pattern": "^[A-Za-z0-9_.{}\\\\ -]{1,256}$"
+          "pattern": "^[A-Za-z0-9_.{}\\\\ -]{1,256}(?![\\s\\S])"
         }
       },
       "required": [
@@ -127,7 +127,7 @@
         "message": {
           "type": "string",
           "x-untrusted": true,
-          "description": "Untrusted: may echo input or tool output."
+          "description": "A fixed string of the tool; never exception text, child output or an input value."
         },
         "reason": {
           "oneOf": [
@@ -145,8 +145,7 @@
             "object",
             "null"
           ],
-          "x-untrusted": true,
-          "description": "By code or reason: config_invalid has key; reason invalid_payload has pointer; tool_missing has install; toast_failed has stage and attempts; interop_failed and outcome_unknown have attempts. Never an input value."
+          "description": "Fixed strings and numbers only, by code or reason: config_invalid has key (a config key name, ? , --config or a file path); reason invalid_payload has pointer; reason link_invalid has pointer /link; tool_missing has install; toast_failed has stage and attempts; interop_failed has attempts; outcome_unknown has attempts and exit_status. Never an input value."
         },
         "retryable": {
           "type": [
@@ -250,10 +249,7 @@
                   "const": false
                 },
                 "unknown_outcome": {
-                  "type": [
-                    "boolean",
-                    "null"
-                  ]
+                  "type": "boolean"
                 }
               }
             },
@@ -388,7 +384,8 @@
                 "properties": {
                   "key": {
                     "type": "string",
-                    "minLength": 1
+                    "minLength": 1,
+                    "maxLength": 4096
                   }
                 }
               }
@@ -418,8 +415,7 @@
                 ],
                 "properties": {
                   "install": {
-                    "type": "string",
-                    "minLength": 1
+                    "const": "Set powershell_bin to the absolute path of Windows PowerShell 5.1, enable interop ([interop] enabled=true in /etc/wsl.conf) and check the automount root."
                   }
                 }
               }
@@ -493,10 +489,7 @@
           "if": {
             "properties": {
               "code": {
-                "enum": [
-                  "interop_failed",
-                  "outcome_unknown"
-                ]
+                "const": "interop_failed"
               }
             },
             "required": [
@@ -529,6 +522,99 @@
         {
           "if": {
             "properties": {
+              "code": {
+                "const": "outcome_unknown"
+              }
+            },
+            "required": [
+              "code"
+            ]
+          },
+          "then": {
+            "required": [
+              "details"
+            ],
+            "properties": {
+              "details": {
+                "type": "object",
+                "required": [
+                  "attempts"
+                ],
+                "properties": {
+                  "attempts": {
+                    "enum": [
+                      1,
+                      2
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "code": {
+                "const": "outcome_unknown"
+              }
+            },
+            "required": [
+              "code"
+            ]
+          },
+          "then": {
+            "properties": {
+              "details": {
+                "required": [
+                  "exit_status"
+                ],
+                "properties": {
+                  "exit_status": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "description": "Exit status of the child, negative for a signal; null when the deadline ended it."
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "reason": {
+                "const": "link_invalid"
+              }
+            },
+            "required": [
+              "reason"
+            ]
+          },
+          "then": {
+            "required": [
+              "details"
+            ],
+            "properties": {
+              "details": {
+                "type": "object",
+                "required": [
+                  "pointer"
+                ],
+                "properties": {
+                  "pointer": {
+                    "const": "/link"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
               "reason": {
                 "const": "invalid_payload"
               }
@@ -549,7 +635,8 @@
                 ],
                 "properties": {
                   "pointer": {
-                    "type": "string"
+                    "type": "string",
+                    "pattern": "^(|/[A-Za-z0-9_-]{1,64}|/\\?)(?![\\s\\S])"
                   }
                 }
               }

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "wsl-notice/notification.json",
   "title": "wsl-notice notification",
-  "description": "Input to send (stdin JSON or --file). Syntactic gate only: the sanitizer, the post-sanitizing empty-message check (message has no minLength here) and the link reasons are applied by the tool.",
+  "description": "Input to send (stdin JSON or --file). Syntactic gate only: the sanitizer, the post-sanitizing empty-message check (message has no minLength here; an absent message is empty_message too) and the link reasons are applied by the tool.",
   "type": "object",
   "properties": {
     "title": {
@@ -24,9 +24,9 @@
     "link": {
       "type": "string",
       "maxLength": 1024,
-      "pattern": "^[Hh][Tt][Tt][Pp][Ss]?://[\\x21-\\x7e]+$",
+      "pattern": "^[\\x21-\\x7e]{1,1024}(?![\\s\\S])",
       "x-untrusted": true,
-      "description": "Coarse gate for the link rule: 1 to 1024 printable ASCII characters, http or https scheme (case-insensitive). The tool is authoritative (structure, port, userinfo, link_scheme versus link_invalid, link_hosts)."
+      "description": "Coarse gate for the link rule: 1 to 1024 printable ASCII characters. The tool is authoritative (scheme, host, port, percent escapes, userinfo, link_scheme versus link_invalid, link_hosts)."
     }
   },
   "required": [

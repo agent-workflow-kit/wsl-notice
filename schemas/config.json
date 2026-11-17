@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "wsl-notice/config",
   "title": "wsl-notice config",
-  "description": "~/.config/wsl-notice/config.yaml (XDG_CONFIG_HOME respected) plus config.d/*.yaml in lexical order; maps merge. Invalid config exits 2 (config_invalid), naming the key. Precedence: flags, then config, then defaults; there are no environment overrides.",
+  "description": ".config/wsl-notice/config.yaml under the home directory from the password database (HOME and XDG_CONFIG_HOME are not read; --config selects another file) plus config.d/*.yaml beside it in lexical order; maps merge. Strict YAML loader. Invalid config exits 2 (config_invalid), naming the key. Precedence: flags, then config, then defaults; there are no environment overrides.",
   "type": "object",
   "properties": {
     "enabled": {
@@ -12,13 +12,13 @@
     },
     "powershell_bin": {
       "type": "string",
-      "pattern": "^/[^\\u0000\\\\]{1,4096}$",
+      "pattern": "^/[^\\u0000\\\\]{1,4096}(?![\\s\\S])",
       "default": "/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe",
       "description": "Absolute path of Windows PowerShell 5.1. No PATH search, no drive letters, no backslashes."
     },
     "app_id": {
       "type": "string",
-      "pattern": "^[A-Za-z0-9_.{}\\\\ -]{1,256}$",
+      "pattern": "^[A-Za-z0-9_.{}\\\\ -]{1,256}(?![\\s\\S])",
       "default": "{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\\WindowsPowerShell\\v1.0\\powershell.exe",
       "description": "Application identity the toast is shown under. The default is the Windows PowerShell identity, which needs no registration. An unregistered identity gives no error and may show nothing."
     },
@@ -28,22 +28,22 @@
         "info": {
           "type": "string",
           "maxLength": 16,
-          "pattern": "^[^\\u0000-\\u001f\\u007f\\u0080-\\u009f\\u200b-\\u200f\\u2028-\\u202e\\u2060-\\u2069\\ufeff]*$"
+          "pattern": "^[^\\u0000-\\u001f\\u007f\\u0080-\\u009f\\u200b-\\u200f\\u2028-\\u202e\\u2060-\\u2069\\ufeff]*(?![\\s\\S])"
         },
         "warn": {
           "type": "string",
           "maxLength": 16,
-          "pattern": "^[^\\u0000-\\u001f\\u007f\\u0080-\\u009f\\u200b-\\u200f\\u2028-\\u202e\\u2060-\\u2069\\ufeff]*$"
+          "pattern": "^[^\\u0000-\\u001f\\u007f\\u0080-\\u009f\\u200b-\\u200f\\u2028-\\u202e\\u2060-\\u2069\\ufeff]*(?![\\s\\S])"
         },
         "action": {
           "type": "string",
           "maxLength": 16,
-          "pattern": "^[^\\u0000-\\u001f\\u007f\\u0080-\\u009f\\u200b-\\u200f\\u2028-\\u202e\\u2060-\\u2069\\ufeff]*$"
+          "pattern": "^[^\\u0000-\\u001f\\u007f\\u0080-\\u009f\\u200b-\\u200f\\u2028-\\u202e\\u2060-\\u2069\\ufeff]*(?![\\s\\S])"
         },
         "error": {
           "type": "string",
           "maxLength": 16,
-          "pattern": "^[^\\u0000-\\u001f\\u007f\\u0080-\\u009f\\u200b-\\u200f\\u2028-\\u202e\\u2060-\\u2069\\ufeff]*$"
+          "pattern": "^[^\\u0000-\\u001f\\u007f\\u0080-\\u009f\\u200b-\\u200f\\u2028-\\u202e\\u2060-\\u2069\\ufeff]*(?![\\s\\S])"
         }
       },
       "additionalProperties": false,
@@ -53,7 +53,7 @@
         "action": "ACTION:",
         "error": "ERROR:"
       },
-      "description": "Title prefix per level, one line of at most 16 characters. Maps merge across drop-ins. Values the sanitizer would change are config_invalid."
+      "description": "Title prefix per level, one line of at most 16 characters. Maps merge across drop-ins. Values are run through the title rule (sanitizer steps 1 to 5) and must come out unchanged, else config_invalid."
     },
     "max_title": {
       "type": "integer",
@@ -69,7 +69,8 @@
     },
     "timeout": {
       "$ref": "#/$defs/duration",
-      "default": "10s"
+      "default": "10s",
+      "description": "One monotonic deadline for a send, 5s to 60s (enforced by the tool)."
     },
     "link_hosts": {
       "type": "array",
@@ -77,9 +78,15 @@
       "maxItems": 32,
       "items": {
         "type": "string",
-        "pattern": "^[a-z0-9.-]{1,253}$"
+        "maxLength": 253,
+        "pattern": "^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?![\\s\\S])"
       },
-      "description": "Optional, unset by default. When set, a link's host (lowercased, no port) must equal an entry or end with '.' plus an entry, else exit 20 link_invalid."
+      "examples": [
+        [
+          "example.org"
+        ]
+      ],
+      "description": "Optional, unset by default. Host names in lowercase of at least two labels joined by single dots; an entry that does not match is config_invalid. When set, a link's host (lowercased, no port; a bracket host never matches) must equal an entry or end with '.' plus an entry, else exit 20 link_invalid."
     },
     "log": {
       "type": "boolean",
@@ -93,24 +100,14 @@
     "duration": {
       "anyOf": [
         {
-          "type": "number",
-          "minimum": 5,
-          "maximum": 60
+          "type": "number"
         },
         {
           "type": "string",
-          "pattern": "^0*(?:(?:[5-9]|[1-5][0-9])(?:\\.[0-9]+)?|60(?:\\.0+)?)s?$"
-        },
-        {
-          "type": "string",
-          "pattern": "^0*1(?:\\.0+)?m$"
-        },
-        {
-          "type": "string",
-          "pattern": "^0*(?:[5-9][0-9]{3}|[1-5][0-9]{4}|60000)(?:\\.0+)?ms$"
+          "pattern": "^[0-9]+(\\.[0-9]+)?(ms|s|m)?(?![\\s\\S])"
         }
       ],
-      "description": "Seconds as a number from 5 to 60, or a string matching [0-9]+(\\.[0-9]+)?(ms|s|m)? (no unit means seconds; no h or d). The schema checks the 5s to 60s range for common forms and the tool checks it exactly (false for NaN)."
+      "description": "A number of seconds, or a string matching [0-9]+(\\.[0-9]+)?(ms|s|m)? (no unit means seconds; no h or d). The range of each key is in the key's description and is enforced by the tool (false for NaN)."
     }
   }
 }

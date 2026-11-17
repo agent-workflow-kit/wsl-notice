@@ -1,10 +1,10 @@
 # wsl-notice example config: every key with its built-in default.
-# Location: ~/.config/wsl-notice/config.yaml (an absolute XDG_CONFIG_HOME is respected), plus
-# config.d/*.yaml in lexical order; --config <path> reads another file (drop-ins are read next
-# to it). Maps merge across files.
+# Location: .config/wsl-notice/config.yaml under your home directory (from the password
+# database; HOME and XDG_CONFIG_HOME are not read), plus config.d/*.yaml in lexical order;
+# --config <path> reads another file (drop-ins are read from config.d/ beside it). Maps merge
+# across files.
 # Precedence: flags, then config, then defaults. There are no environment overrides.
-# Durations: seconds as a number, or a string <number> with an optional unit ms, s or m ("10s");
-# no unit means seconds. A value outside the stated range exits 2 (config_invalid) naming the key.
+# Durations: a number of seconds, or a string such as "10s" or "1m"; no unit means seconds. A value outside the stated range exits 2 (config_invalid) naming the key.
 # Schema: schemas/config.json. Invalid config exits 2 (config_invalid), naming the key.
 
 # false makes send print {"outcome": "disabled"} and exit 22 without starting anything.
@@ -36,13 +36,14 @@ max_title: 100
 max_body: 1000
 
 # One wall-clock deadline for a send, from reading input to the end of the PowerShell call;
-# 5s to 60s. At the deadline the child is stopped and the result is outcome_unknown.
+# 5s to 60s. At the deadline the child is stopped; the result is outcome_unknown if the child
+# had started, interop_failed if it had not.
 timeout: 10s
 
-# Optional (unset by default): 1 to 32 lowercase host names. When set, a link's host must equal
-# an entry or end with "." plus an entry. With it unset a producer can aim the tap target at any
-# web address; the toast does not show the URL.
-# link_hosts: []
+# Optional (unset by default): 1 to 32 lowercase host names of at least two labels. When set, a
+# link's host must equal an entry or end with "." plus an entry. With it unset a producer can
+# aim the tap target at any web address; the toast does not show the URL.
+# link_hosts: [example.org]
 
-# false writes no ~/.local/state/wsl-notice/log.jsonl.
+# false writes no log.jsonl in the state directory.
 log: true

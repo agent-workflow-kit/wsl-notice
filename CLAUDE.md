@@ -21,10 +21,10 @@ wsl-notice is an awkit L1 primitive: it shows a Windows toast from a process run
 - Interface first: `docs/interface.md` and `schemas/` change before the implementation does.
 - Semver. A breaking interface change is, before 1.0, a `feat` commit whose title names the break (never `!` before 1.0), and from 1.0 on a `!` commit; the title becomes the changelog line (details go in the PR body). Either way, update `awkit-docs/interface-registry.md`. Never hand-edit CHANGELOG.md or the version.
 - Run `make verify` before every commit.
-- All subprocess calls go through `src/wsl_notice/gateway.py`, so tests can substitute fakes (a fake `powershell.exe` lives in `tests/fakebin/`).
+- All subprocess calls, input reads, the home directory and uid, clocks and the interop sockets go through `src/wsl_notice/gateway.py`, so tests can substitute fakes; process tests call `cli.main(argv, env, gateway)` in-process, and a fake `powershell.exe` lives in `tests/fakebin/` for the few real-subprocess tests.
 - Never run destructive git commands (reset, checkout --, clean, restore, stash drop, force-push). Never kill processes by pattern; signal only the exact child this tool started and the process group it created.
 - The 0.1.0 release is gated on a person seeing a toast under the default identity (`docs/plan.md`, stage 0).
-- No environment overrides and no `PATH` search for PowerShell: `powershell_bin` is an absolute path from config.
+- No environment overrides and no `PATH` search for PowerShell: `powershell_bin` is an absolute path from config. The config is read only from the home directory of the password database (`--config` selects another file); neither `HOME` nor `XDG_CONFIG_HOME` is read.
 - Untrusted text travels only in files or stdin, never argv or env.
 - Minimize dependencies; justify each one in `docs/design.md`.
 
