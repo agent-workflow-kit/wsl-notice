@@ -1,0 +1,179 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "wsl-notice/cli/validate.json",
+  "title": "validate output",
+  "description": "Printed with --json when the config loads. validate never prompts. Plain validate ignores enabled except to report it. A failed check ends the run, so ok is true only when every printed check is ok (exit 0); otherwise ok is false and the exit code is that of the failing check (config: 2; every other check: 12). When the config cannot load, the error envelope is printed instead (exit 2). With --probe: powershell_version and start_ms, present only when the probe check is ok; with --test-message: a check named test_message. With enabled false, --probe and --test-message make no call and print {outcome: disabled} (as send.json) and exit 22 before any check.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/report"
+    },
+    {
+      "type": "object",
+      "properties": {
+        "outcome": {
+          "const": "disabled"
+        }
+      },
+      "required": [
+        "outcome"
+      ],
+      "additionalProperties": false
+    }
+  ],
+  "$defs": {
+    "report": {
+      "type": "object",
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "The configured value."
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "enum": [
+                  "config",
+                  "platform",
+                  "powershell",
+                  "probe",
+                  "test_message"
+                ],
+                "description": "In this order; a failed check ends the run."
+              },
+              "ok": {
+                "type": "boolean"
+              },
+              "message": {
+                "type": "string",
+                "description": "A fixed string of the tool (the probe check names the interop source; the powershell check names the resolved powershell_bin)."
+              }
+            },
+            "required": [
+              "name",
+              "ok",
+              "message"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "powershell_version": {
+          "type": "string",
+          "pattern": "^[0-9]+(\\.[0-9]+){1,3}(?![\\s\\S])",
+          "description": "With --probe, only when the probe check is ok."
+        },
+        "start_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "With --probe, only when the probe check is ok."
+        }
+      },
+      "required": [
+        "ok",
+        "enabled",
+        "checks"
+      ],
+      "additionalProperties": false,
+      "dependentRequired": {
+        "powershell_version": [
+          "start_ms"
+        ],
+        "start_ms": [
+          "powershell_version"
+        ]
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "ok": {
+                "const": true
+              }
+            },
+            "required": [
+              "ok"
+            ]
+          },
+          "then": {
+            "properties": {
+              "checks": {
+                "items": {
+                  "properties": {
+                    "ok": {
+                      "const": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "checks": {
+                "contains": {
+                  "properties": {
+                    "ok": {
+                      "const": false
+                    }
+                  },
+                  "required": [
+                    "ok"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "checks": {
+                "contains": {
+                  "properties": {
+                    "name": {
+                      "const": "probe"
+                    },
+                    "ok": {
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "ok"
+                  ]
+                }
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "powershell_version",
+              "start_ms"
+            ]
+          },
+          "else": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "powershell_version"
+                  ]
+                },
+                {
+                  "required": [
+                    "start_ms"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  }
+}

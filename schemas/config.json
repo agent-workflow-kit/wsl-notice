@@ -1,12 +1,113 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "desktop-notice/config",
-  "title": "desktop-notice config",
+  "$id": "wsl-notice/config.json",
+  "title": "wsl-notice config",
+  "description": ".config/wsl-notice/config.yaml under the home directory from the password database (HOME and XDG_CONFIG_HOME are not read, and a failed home lookup is config_invalid with key home; --config selects another file) plus config.d/*.yaml beside it in lexical order; maps merge. Strict YAML loader. Invalid config exits 2 (config_invalid), naming the key. Precedence: flags, then config, then defaults; there are no environment overrides.",
   "type": "object",
   "properties": {
-    "hooks": {
-      "type": "object"
+    "enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "false makes send exit 22."
+    },
+    "powershell_bin": {
+      "type": "string",
+      "pattern": "^/[^\\u0000\\\\]{1,4096}(?![\\s\\S])",
+      "default": "/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe",
+      "description": "Absolute path of Windows PowerShell 5.1. No PATH search, no drive letters, no backslashes."
+    },
+    "app_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.{}\\\\ -]{1,256}(?![\\s\\S])",
+      "default": "{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\\WindowsPowerShell\\v1.0\\powershell.exe",
+      "description": "Application identity the toast is shown under. The default is the Windows PowerShell identity, which needs no registration. An unregistered identity gives no error and may show nothing."
+    },
+    "level_prefix": {
+      "type": "object",
+      "properties": {
+        "info": {
+          "type": "string",
+          "maxLength": 16,
+          "pattern": "^[^\\u0000-\\u001f\\u007f\\u0080-\\u009f\\u200b-\\u200f\\u2028-\\u202e\\u2060-\\u2069\\ufeff]*(?![\\s\\S])"
+        },
+        "warn": {
+          "type": "string",
+          "maxLength": 16,
+          "pattern": "^[^\\u0000-\\u001f\\u007f\\u0080-\\u009f\\u200b-\\u200f\\u2028-\\u202e\\u2060-\\u2069\\ufeff]*(?![\\s\\S])"
+        },
+        "action": {
+          "type": "string",
+          "maxLength": 16,
+          "pattern": "^[^\\u0000-\\u001f\\u007f\\u0080-\\u009f\\u200b-\\u200f\\u2028-\\u202e\\u2060-\\u2069\\ufeff]*(?![\\s\\S])"
+        },
+        "error": {
+          "type": "string",
+          "maxLength": 16,
+          "pattern": "^[^\\u0000-\\u001f\\u007f\\u0080-\\u009f\\u200b-\\u200f\\u2028-\\u202e\\u2060-\\u2069\\ufeff]*(?![\\s\\S])"
+        }
+      },
+      "additionalProperties": false,
+      "default": {
+        "info": "",
+        "warn": "WARN:",
+        "action": "ACTION:",
+        "error": "ERROR:"
+      },
+      "description": "Title prefix per level, one line of at most 16 characters. Maps merge across drop-ins. Values are run through the title rule (sanitizer steps 1 to 5) and must come out unchanged, else config_invalid."
+    },
+    "max_title": {
+      "type": "integer",
+      "minimum": 20,
+      "maximum": 256,
+      "default": 100
+    },
+    "max_body": {
+      "type": "integer",
+      "minimum": 100,
+      "maximum": 5000,
+      "default": 1000
+    },
+    "timeout": {
+      "$ref": "#/$defs/duration",
+      "default": "10s",
+      "description": "One monotonic deadline for a send, 5s to 60s (enforced by the tool)."
+    },
+    "link_hosts": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 32,
+      "items": {
+        "type": "string",
+        "maxLength": 253,
+        "pattern": "^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?![\\s\\S])"
+      },
+      "examples": [
+        [
+          "example.org"
+        ]
+      ],
+      "description": "Optional, unset by default. Host names in lowercase of at least two labels joined by single dots; an entry that does not match is config_invalid. When set, a link's host (lowercased, no port; a bracket host never matches) must equal an entry or end with '.' plus an entry, else exit 20 link_invalid."
+    },
+    "log": {
+      "type": "boolean",
+      "default": true,
+      "description": "false writes no log.jsonl."
     }
   },
-  "additionalProperties": true
+  "additionalProperties": false,
+  "required": [],
+  "$defs": {
+    "duration": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "string",
+          "pattern": "^[0-9]+(\\.[0-9]+)?(ms|s|m)?(?![\\s\\S])"
+        }
+      ],
+      "description": "A number of seconds, or a string matching [0-9]+(\\.[0-9]+)?(ms|s|m)? (no unit means seconds; no h or d). The range of each key is in the key's description and is enforced by the tool (false for NaN)."
+    }
+  }
 }

@@ -1,3 +1,49 @@
-# Example config for desktop-notice. Location: ~/.config/desktop-notice/config.yaml (drop-ins: config.d/*.yaml).
-# Keys are defined in docs/interface.md once designed.
-hooks: {}
+# wsl-notice example config: every key with its built-in default.
+# Location: .config/wsl-notice/config.yaml under your home directory (from the password
+# database; HOME and XDG_CONFIG_HOME are not read, and a failed lookup is config_invalid), plus config.d/*.yaml in lexical order;
+# --config <path> reads another file (drop-ins are read from config.d/ beside it). Maps merge
+# across files.
+# Precedence: flags, then config, then defaults. There are no environment overrides.
+# Durations: a number of seconds, or a string such as "10s" or "1m"; no unit means seconds. A value outside the stated range exits 2 (config_invalid) naming the key.
+# Schema: schemas/config.json. Invalid config exits 2 (config_invalid), naming the key.
+
+# false makes send print {"outcome": "disabled"} and exit 22 without starting anything.
+enabled: true
+
+# Absolute path of Windows PowerShell 5.1. There is no PATH search. The default assumes the
+# default WSL automount root; set it here if yours differs. No drive letters or backslashes.
+powershell_bin: /mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe
+
+# Application identity the toast is shown under. The default is the Windows PowerShell identity,
+# which needs no registration; the toast should show as coming from "Windows PowerShell". An
+# identity that is not registered gives no error and may show nothing. Allowed characters:
+# letters, digits, _ . { } \ space and -, 1 to 256 of them.
+app_id: '{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\WindowsPowerShell\v1.0\powershell.exe'
+
+# Title prefix per level, joined with a space to the title. One line, at most 16 characters each,
+# unchanged by the sanitizer; an empty string adds nothing.
+level_prefix:
+  info: ""
+  warn: "WARN:"
+  action: "ACTION:"
+  error: "ERROR:"
+
+# Title limit in characters (20 to 256). A longer title is cut and ends with an ellipsis.
+max_title: 100
+
+# Message limit in characters (100 to 5000). A longer message is cut and ends with an ellipsis.
+# The defaults sit below what Windows accepted because on-screen truncation is not observable.
+max_body: 1000
+
+# One wall-clock deadline for a send, from reading input to the end of the PowerShell call;
+# 5s to 60s. At the deadline the child is stopped; the result is outcome_unknown if the child
+# had started, interop_failed if it had not, and unavailable if input had not arrived yet.
+timeout: 10s
+
+# Optional (unset by default): 1 to 32 lowercase host names of at least two labels. When set, a
+# link's host must equal an entry or end with "." plus an entry. With it unset a producer can
+# aim the tap target at any web address; the toast does not show the URL.
+# link_hosts: [example.org]
+
+# false writes no log.jsonl in the state directory.
+log: true

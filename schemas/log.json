@@ -1,33 +1,307 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "desktop-notice/log",
-  "title": "desktop-notice log.jsonl record",
+  "$id": "wsl-notice/log.json",
+  "title": "wsl-notice log.jsonl record",
+  "description": "One record per outcome that reaches input reading (step 3) or later: sent, refused (exit 20), outcome_unknown (exit 12 whenever unknown_outcome is true, and exit 1 after the child was started, code internal) or failed (any other exit 12, including unavailable). Not logged: exit 1 before the child was started, exit 2, exit 22 (disabled), a signal before the send started (exit 128+N, no envelope) and dry runs. A log write failure warns only. Never a title, message or link.",
   "type": "object",
   "properties": {
     "ts": {
-      "type": "string",
-      "format": "date-time"
+      "$ref": "defs.json#/$defs/ts"
     },
-    "level": {
+    "tool": {
+      "const": "wsl-notice"
+    },
+    "version": {
       "type": "string",
+      "minLength": 1
+    },
+    "outcome": {
       "enum": [
-        "debug",
-        "info",
-        "warn",
-        "error"
+        "sent",
+        "refused",
+        "failed",
+        "outcome_unknown"
       ]
     },
-    "event": {
-      "type": "string"
+    "exit": {
+      "enum": [
+        0,
+        1,
+        12,
+        20
+      ]
     },
-    "message": {
-      "type": "string"
+    "code": {
+      "oneOf": [
+        {
+          "$ref": "defs.json#/$defs/error_code"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "refused for exit 20, the exit 12 error code for a failure, internal for a logged exit 1, null on success."
+    },
+    "reason": {
+      "oneOf": [
+        {
+          "$ref": "defs.json#/$defs/refusal_reason"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Null unless the outcome is refused."
+    },
+    "level": {
+      "oneOf": [
+        {
+          "$ref": "defs.json#/$defs/level"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "Null when no level was parsed."
+    },
+    "bytes": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "truncated": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "duration_ms": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "attempts": {
+      "enum": [
+        1,
+        2,
+        null
+      ],
+      "description": "Number of PowerShell spawns; null when nothing was spawned."
+    },
+    "message_sha256": {
+      "oneOf": [
+        {
+          "$ref": "defs.json#/$defs/hex16"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "First 16 hex of the SHA-256 of sanitized title, LF, sanitized message; null when not computed."
+    },
+    "dedupe_key_sha256": {
+      "oneOf": [
+        {
+          "$ref": "defs.json#/$defs/hex16"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "First 16 hex of the SHA-256 of --dedupe-key; null when none."
+    },
+    "actor": {
+      "$ref": "defs.json#/$defs/actor"
+    },
+    "actor_source": {
+      "$ref": "defs.json#/$defs/actor_source"
     }
   },
   "required": [
     "ts",
+    "tool",
+    "version",
+    "outcome",
+    "exit",
+    "code",
+    "reason",
     "level",
-    "event"
+    "bytes",
+    "truncated",
+    "duration_ms",
+    "attempts",
+    "message_sha256",
+    "dedupe_key_sha256",
+    "actor",
+    "actor_source"
   ],
-  "additionalProperties": true
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "outcome": {
+            "const": "sent"
+          }
+        },
+        "required": [
+          "outcome"
+        ]
+      },
+      "then": {
+        "properties": {
+          "exit": {
+            "const": 0
+          },
+          "code": {
+            "type": "null"
+          },
+          "reason": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "outcome": {
+            "const": "refused"
+          }
+        },
+        "required": [
+          "outcome"
+        ]
+      },
+      "then": {
+        "properties": {
+          "exit": {
+            "const": 20
+          },
+          "code": {
+            "const": "refused"
+          },
+          "reason": {
+            "$ref": "defs.json#/$defs/refusal_reason"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "reason": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "exit": {
+            "const": 20
+          }
+        },
+        "required": [
+          "exit"
+        ]
+      },
+      "then": {
+        "properties": {
+          "outcome": {
+            "const": "refused"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "outcome": {
+            "const": "failed"
+          }
+        },
+        "required": [
+          "outcome"
+        ]
+      },
+      "then": {
+        "properties": {
+          "exit": {
+            "const": 12
+          },
+          "code": {
+            "enum": [
+              "not_wsl",
+              "tool_missing",
+              "toast_failed",
+              "interop_failed",
+              "unavailable"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "outcome": {
+            "const": "outcome_unknown"
+          }
+        },
+        "required": [
+          "outcome"
+        ]
+      },
+      "then": {
+        "oneOf": [
+          {
+            "properties": {
+              "exit": {
+                "const": 12
+              },
+              "code": {
+                "const": "outcome_unknown"
+              }
+            }
+          },
+          {
+            "properties": {
+              "exit": {
+                "const": 1
+              },
+              "code": {
+                "const": "internal"
+              },
+              "attempts": {
+                "enum": [
+                  1,
+                  2
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "exit": {
+            "const": 1
+          }
+        },
+        "required": [
+          "exit"
+        ]
+      },
+      "then": {
+        "properties": {
+          "outcome": {
+            "const": "outcome_unknown"
+          }
+        }
+      }
+    }
+  ]
 }

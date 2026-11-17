@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "wsl-notice/notification.json",
+  "title": "wsl-notice notification",
+  "description": "Input to send (stdin JSON or --file). Syntactic gate only: the sanitizer, the post-sanitizing empty-message check (message has no minLength here; an absent message is empty_message too) and the link reasons are applied by the tool.",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "maxLength": 100000,
+      "x-untrusted": true,
+      "description": "One line (the sanitizer turns newlines into spaces); at most 100000 characters of input (else exit 20 invalid_payload); cut to max_title characters at render time."
+    },
+    "message": {
+      "type": "string",
+      "maxLength": 100000,
+      "x-untrusted": true,
+      "description": "At most 100000 characters of input (else exit 20 invalid_payload); must not be empty after sanitizing (exit 20 empty_message)."
+    },
+    "level": {
+      "$ref": "defs.json#/$defs/level",
+      "default": "info"
+    },
+    "link": {
+      "type": "string",
+      "maxLength": 1024,
+      "pattern": "^[\\x21-\\x7e]{1,1024}(?![\\s\\S])",
+      "x-untrusted": true,
+      "description": "Coarse gate for the link rule: 1 to 1024 printable ASCII characters. The tool is authoritative (scheme, host, port, percent escapes, userinfo, link_scheme versus link_invalid, link_hosts)."
+    }
+  },
+  "required": [
+    "message"
+  ],
+  "additionalProperties": false
+}
