@@ -68,6 +68,7 @@
         "tool_missing",
         "toast_failed",
         "interop_failed",
+        "unavailable",
         "outcome_unknown"
       ]
     },
@@ -145,7 +146,7 @@
             "object",
             "null"
           ],
-          "description": "Fixed strings and numbers only, by code or reason: config_invalid has key (a config key name, ? , --config or a file path); reason invalid_payload has pointer; reason link_invalid has pointer /link; tool_missing has install; toast_failed has stage and attempts; interop_failed has attempts; outcome_unknown has attempts and exit_status. Never an input value."
+          "description": "Fixed strings and numbers only, by code or reason: config_invalid has key (a config key name, ?, --config, home or a file path); unavailable has phase (always input); reason invalid_payload has pointer; reason link_invalid has pointer /link; tool_missing has install; toast_failed has stage and attempts; interop_failed has attempts; outcome_unknown has attempts and exit_status. Never an input value."
         },
         "retryable": {
           "type": [
@@ -210,6 +211,7 @@
                   "tool_missing",
                   "toast_failed",
                   "interop_failed",
+                  "unavailable",
                   "outcome_unknown"
                 ]
               }
@@ -296,6 +298,28 @@
             "properties": {
               "code": {
                 "const": "interop_failed"
+              }
+            },
+            "required": [
+              "code"
+            ]
+          },
+          "then": {
+            "properties": {
+              "retryable": {
+                "const": true
+              },
+              "unknown_outcome": {
+                "const": false
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "code": {
+                "const": "unavailable"
               }
             },
             "required": [
@@ -416,6 +440,36 @@
                 "properties": {
                   "install": {
                     "const": "Set powershell_bin to the absolute path of Windows PowerShell 5.1, enable interop ([interop] enabled=true in /etc/wsl.conf) and check the automount root."
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "code": {
+                "const": "unavailable"
+              }
+            },
+            "required": [
+              "code"
+            ]
+          },
+          "then": {
+            "required": [
+              "details"
+            ],
+            "properties": {
+              "details": {
+                "type": "object",
+                "required": [
+                  "phase"
+                ],
+                "properties": {
+                  "phase": {
+                    "const": "input"
                   }
                 }
               }

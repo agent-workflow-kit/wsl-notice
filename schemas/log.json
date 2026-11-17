@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "wsl-notice/log.json",
   "title": "wsl-notice log.jsonl record",
-  "description": "One record per outcome that reaches input reading (step 3) or later: sent, refused (exit 20), outcome_unknown (exit 12 whenever unknown_outcome is true) or failed (any other exit 12). Not logged: exit 1, exit 2, exit 22 (disabled) and dry runs. A log write failure warns only. Never a title, message or link.",
+  "description": "One record per outcome that reaches input reading (step 3) or later: sent, refused (exit 20), outcome_unknown (exit 12 whenever unknown_outcome is true, and exit 1 after the child was started, code internal) or failed (any other exit 12, including unavailable). Not logged: exit 1 before the child was started, exit 2, exit 22 (disabled), a signal before the send started (exit 128+N, no envelope) and dry runs. A log write failure warns only. Never a title, message or link.",
   "type": "object",
   "properties": {
     "ts": {
@@ -26,6 +26,7 @@
     "exit": {
       "enum": [
         0,
+        1,
         12,
         20
       ]
@@ -39,7 +40,7 @@
           "type": "null"
         }
       ],
-      "description": "refused for exit 20, the exit 12 error code for a failure, null on success."
+      "description": "refused for exit 20, the exit 12 error code for a failure, internal for a logged exit 1, null on success."
     },
     "reason": {
       "oneOf": [
@@ -234,7 +235,8 @@
               "not_wsl",
               "tool_missing",
               "toast_failed",
-              "interop_failed"
+              "interop_failed",
+              "unavailable"
             ]
           }
         }
@@ -252,11 +254,50 @@
         ]
       },
       "then": {
+        "oneOf": [
+          {
+            "properties": {
+              "exit": {
+                "const": 12
+              },
+              "code": {
+                "const": "outcome_unknown"
+              }
+            }
+          },
+          {
+            "properties": {
+              "exit": {
+                "const": 1
+              },
+              "code": {
+                "const": "internal"
+              },
+              "attempts": {
+                "enum": [
+                  1,
+                  2
+                ]
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "if": {
         "properties": {
           "exit": {
-            "const": 12
-          },
-          "code": {
+            "const": 1
+          }
+        },
+        "required": [
+          "exit"
+        ]
+      },
+      "then": {
+        "properties": {
+          "outcome": {
             "const": "outcome_unknown"
           }
         }

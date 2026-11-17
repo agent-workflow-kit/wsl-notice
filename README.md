@@ -45,7 +45,7 @@ Notification text never appears in a command line or in an environment variable.
 
 ## Exit codes
 
-0 handed to Windows (or a dry run); 1 internal error; 2 usage or invalid config; 12 failed (`not_wsl`, PowerShell missing, toast failed, interop failed, `outcome_unknown` when the child ended without a known result or the deadline passed after it started); 20 the payload was refused, code `refused` with a `reason` (`invalid_payload`, `empty_message`, `link_invalid`, `link_scheme`); 22 disabled in config (a successful no-op, `{"outcome": "disabled"}`). Every `send` that reaches input validation and ends in `sent`, a refusal or a failure is logged; dry runs and exit 22 are not. See [Exit codes](docs/interface.md#exit-codes).
+0 handed to Windows (or a dry run); 1 internal error; 2 usage or invalid config; 12 failed (`not_wsl`, PowerShell missing, toast failed, interop failed, `unavailable` when no input arrived before the deadline, `outcome_unknown` when the child ended without a known result or the deadline passed after it started); 20 the payload was refused, code `refused` with a `reason` (`invalid_payload`, `empty_message`, `link_invalid`, `link_scheme`); 22 disabled in config (a successful no-op, `{"outcome": "disabled"}`); 128+N the tool received signal N before the send started (no envelope, no log record). A caller kills the tool no earlier than `timeout` plus 10 s. Every `send` that reaches input validation and ends in `sent`, a refusal or a failure is logged; dry runs and exit 22 are not. See [Exit codes](docs/interface.md#exit-codes).
 
 ## Limits
 
@@ -59,7 +59,7 @@ Notification text never appears in a command line or in an environment variable.
 
 ## Config, hooks and environment
 
-- Config: `.config/wsl-notice/config.yaml` under your home directory (taken from the password database; `HOME` and `XDG_CONFIG_HOME` are not read) plus `config.d/*.yaml` beside it; `--config <path>` selects another file, which is what a cron line uses for a non-default place; every key is documented in [config.example.yaml](config.example.yaml) and [Config](docs/interface.md#config).
+- Config: `.config/wsl-notice/config.yaml` under your home directory (taken from the password database; `HOME` and `XDG_CONFIG_HOME` are not read; if the lookup fails the tool exits 2 `config_invalid` with key `home`) plus `config.d/*.yaml` beside it; `--config <path>` selects another file, which is what a cron line uses for a non-default place; every key is documented in [config.example.yaml](config.example.yaml) and [Config](docs/interface.md#config).
 - Hooks: none in 0.x ([Hooks](docs/interface.md#hooks)).
 - Environment: there are no `WSL_NOTICE_<KEY>` overrides and no variable selects the config; precedence is flags, config, defaults. The state directory is `.local/state/wsl-notice` under the same home directory; `XDG_STATE_HOME` is not read. wsl-notice reads no credentials ([Environment variables](docs/interface.md#environment-variables)).
 - Calling from a script or agent: see [Calling from automation](docs/interface.md#calling-from-automation).

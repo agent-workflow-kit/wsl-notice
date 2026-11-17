@@ -1,6 +1,6 @@
 # wsl-notice example config: every key with its built-in default.
 # Location: .config/wsl-notice/config.yaml under your home directory (from the password
-# database; HOME and XDG_CONFIG_HOME are not read), plus config.d/*.yaml in lexical order;
+# database; HOME and XDG_CONFIG_HOME are not read, and a failed lookup is config_invalid), plus config.d/*.yaml in lexical order;
 # --config <path> reads another file (drop-ins are read from config.d/ beside it). Maps merge
 # across files.
 # Precedence: flags, then config, then defaults. There are no environment overrides.
@@ -37,7 +37,7 @@ max_body: 1000
 
 # One wall-clock deadline for a send, from reading input to the end of the PowerShell call;
 # 5s to 60s. At the deadline the child is stopped; the result is outcome_unknown if the child
-# had started, interop_failed if it had not.
+# had started, interop_failed if it had not, and unavailable if input had not arrived yet.
 timeout: 10s
 
 # Optional (unset by default): 1 to 32 lowercase host names of at least two labels. When set, a
