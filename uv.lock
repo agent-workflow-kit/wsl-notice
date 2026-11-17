@@ -53,7 +53,7 @@ wheels = [
 ]
 
 [[package]]
-name = "desktop-notice"
+name = "wsl-notice"
 version = "0.0.1"
 source = { editable = "." }
 

@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import pytest
 
-from desktop_notice.cli import main
+from wsl_notice.cli import main
 
 
 def test_version_prints_version_and_exits_zero(capsys: pytest.CaptureFixture[str]) -> None:
     with pytest.raises(SystemExit) as exc:
         main(["--version"])
     assert exc.value.code == 0
-    assert capsys.readouterr().out.strip() == "desktop-notice 0.0.0"
+    assert capsys.readouterr().out.strip() == "wsl-notice 0.0.0"
 
 
 def test_no_arguments_returns_usage_exit_code() -> None:

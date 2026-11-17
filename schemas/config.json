@@ -1,12 +1,106 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "desktop-notice/config",
-  "title": "desktop-notice config",
+  "$id": "wsl-notice/config",
+  "title": "wsl-notice config",
+  "description": "~/.config/wsl-notice/config.yaml (XDG_CONFIG_HOME respected) plus config.d/*.yaml in lexical order; maps merge. Invalid config exits 2 (config_invalid), naming the key. Precedence: flags, then environment (scalar keys only), then config, then defaults.",
   "type": "object",
   "properties": {
-    "hooks": {
-      "type": "object"
+    "enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "false makes send exit 22."
+    },
+    "powershell_bin": {
+      "type": "string",
+      "pattern": "^(?:/[^\\u0000]+|[^/\\u0000\\s]+)$",
+      "default": "powershell.exe",
+      "description": "Name (resolved only against absolute PATH entries) or absolute path of Windows PowerShell."
+    },
+    "app_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.{}\\\\ -]{1,256}$",
+      "default": "{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\\WindowsPowerShell\\v1.0\\powershell.exe",
+      "description": "Application identity the toast is shown under. The default is the Windows PowerShell identity, which needs no registration. An unregistered identity gives no error and may show nothing."
+    },
+    "level_prefix": {
+      "type": "object",
+      "properties": {
+        "info": {
+          "type": "string",
+          "maxLength": 16,
+          "pattern": "^[^\\u0000-\\u001f\\u007f]*$"
+        },
+        "warn": {
+          "type": "string",
+          "maxLength": 16,
+          "pattern": "^[^\\u0000-\\u001f\\u007f]*$"
+        },
+        "action": {
+          "type": "string",
+          "maxLength": 16,
+          "pattern": "^[^\\u0000-\\u001f\\u007f]*$"
+        },
+        "error": {
+          "type": "string",
+          "maxLength": 16,
+          "pattern": "^[^\\u0000-\\u001f\\u007f]*$"
+        }
+      },
+      "additionalProperties": false,
+      "default": {
+        "info": "",
+        "warn": "WARN:",
+        "action": "ACTION:",
+        "error": "ERROR:"
+      },
+      "description": "Title prefix per level, one line of at most 16 characters. Maps merge across drop-ins; cannot be set from the environment."
+    },
+    "max_title": {
+      "type": "integer",
+      "minimum": 20,
+      "maximum": 256,
+      "default": 100
+    },
+    "max_body": {
+      "type": "integer",
+      "minimum": 100,
+      "maximum": 5000,
+      "default": 1000
+    },
+    "timeout": {
+      "$ref": "#/$defs/duration",
+      "default": "10s"
+    },
+    "log": {
+      "type": "boolean",
+      "default": true,
+      "description": "false writes no log.jsonl."
     }
   },
-  "additionalProperties": true
+  "additionalProperties": false,
+  "required": [],
+  "$defs": {
+    "duration": {
+      "anyOf": [
+        {
+          "type": "number",
+          "minimum": 2,
+          "maximum": 60
+        },
+        {
+          "type": "string",
+          "pattern": "^(?:(?:[2-9]|[1-5][0-9])(?:\\.[0-9]+)?|60(?:\\.0+)?)s?$"
+        },
+        {
+          "type": "string",
+          "pattern": "^1(?:\\.0+)?m$"
+        },
+        {
+          "type": "string",
+          "pattern": "^(?:[2-9][0-9]{3}|[1-5][0-9]{4}|60000)(?:\\.0+)?ms$"
+        }
+      ],
+      "description": "Seconds as a number from 2 to 60, a string <number><unit> with unit ms, s or m (for example 10s), or a bare number string meaning seconds. Fractions are accepted; the schema checks the 2s to 60s range for common forms and the tool checks it exactly."
+    }
+  }
 }

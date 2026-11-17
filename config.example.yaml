@@ -1,3 +1,46 @@
-# Example config for desktop-notice. Location: ~/.config/desktop-notice/config.yaml (drop-ins: config.d/*.yaml).
-# Keys are defined in docs/interface.md once designed.
-hooks: {}
+# wsl-notice example config: every key with its built-in default.
+# Location: ~/.config/wsl-notice/config.yaml (XDG_CONFIG_HOME respected), plus config.d/*.yaml in
+# lexical order; --config <path> reads another file (drop-ins are read next to it).
+# Drop-ins: maps merge, other lists replace.
+# Precedence: flags, then environment (scalar keys only), then config, then defaults.
+# Environment: WSL_NOTICE_ENABLED, WSL_NOTICE_POWERSHELL_BIN, WSL_NOTICE_APP_ID,
+# WSL_NOTICE_MAX_TITLE, WSL_NOTICE_MAX_BODY, WSL_NOTICE_TIMEOUT and WSL_NOTICE_LOG set the
+# matching scalar keys. level_prefix cannot be set from the environment.
+# Durations: seconds as a number, or <number><unit> with unit ms, s or m ("10s"); a bare number
+# string ("10") means seconds.
+# Schema: schemas/config.json. Invalid config exits 2 (config_invalid), naming the key.
+
+# false makes send print {"outcome": "disabled"} and exit 22 without starting anything.
+enabled: true
+
+# Windows PowerShell 5.1: a bare name (resolved only against absolute PATH entries) or an absolute
+# path, for example /mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe.
+powershell_bin: powershell.exe
+
+# Application identity the toast is shown under. The default is the Windows PowerShell identity,
+# which needs no registration; the toast shows as coming from "Windows PowerShell". An identity
+# that is not registered gives no error and may show nothing. Allowed characters: letters, digits,
+# _ . { } \ space and -, 1 to 256 of them.
+app_id: '{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\WindowsPowerShell\v1.0\powershell.exe'
+
+# Title prefix per level, joined with a space to the title. One line, at most 16 characters each;
+# an empty string adds nothing.
+level_prefix:
+  info: ""
+  warn: "WARN:"
+  action: "ACTION:"
+  error: "ERROR:"
+
+# Title limit in characters (20 to 256). A longer title is cut and ends with an ellipsis.
+max_title: 100
+
+# Message limit in characters (100 to 5000). A longer message is cut and ends with an ellipsis.
+# The defaults sit below what Windows accepted because on-screen truncation is not observable.
+max_body: 1000
+
+# Budget for one send (PowerShell takes about one second); 2s to 60s. On timeout the child is
+# stopped and the result is outcome_unknown.
+timeout: 10s
+
+# false writes no ~/.local/state/wsl-notice/log.jsonl.
+log: true
