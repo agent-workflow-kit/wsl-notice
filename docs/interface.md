@@ -281,7 +281,7 @@ Schema: [schemas/config.json](../schemas/config.json); example: [config.example.
 
 ## Environment variables
 
-There are no `WSL_NOTICE_<KEY>` overrides, and no variable selects a configuration: the config path comes from the password database. The tool itself reads `XDG_STATE_HOME` (an absolute path; it locates the state directory) and `WSL_INTEROP` (the interop socket choice). It copies `PATH`, `HOME`, `LANG`, `LC_ALL` and `WSL_DISTRO_NAME` to the child as listed under [Toast construction](#toast-construction). WSL is detected from `/proc/sys/kernel/osrelease` only. It reads no credentials.
+There are no `WSL_NOTICE_<KEY>` overrides, and no variable selects the config or the state directory (`HOME`, `XDG_CONFIG_HOME` and `XDG_STATE_HOME` are not read; both locations come from the password database). The tool itself reads `WSL_INTEROP` (the interop socket choice). It copies `PATH`, `HOME`, `LANG`, `LC_ALL` and `WSL_DISTRO_NAME` to the child as listed under [Toast construction](#toast-construction). WSL is detected from `/proc/sys/kernel/osrelease` only. It reads no credentials.
 
 ## Log
 
@@ -293,7 +293,7 @@ Fields: `{ts, tool, version, outcome, exit, code, reason, level, bytes, truncate
 
 ## Files
 
-The state directory is `$XDG_STATE_HOME/wsl-notice` when `XDG_STATE_HOME` is set to an absolute path, else `.local/state/wsl-notice` under the home directory from the password database. It is created with mode 0700, opened with `O_DIRECTORY` and `O_NOFOLLOW`, and checked on that descriptor to be owned by the user with no group or other permissions. Every file below it is opened relative to that descriptor (`dir_fd`) with `O_NOFOLLOW`, `O_NONBLOCK` and `O_CLOEXEC` (the log also with `O_APPEND` and mode 0600) and must be a regular file on `fstat`; a FIFO, a symlink or a device makes the state unusable instead of blocking the tool. It is used only when it is needed (a log record). If it cannot be used the tool warns once on stderr, writes no log record, and the exit code is unchanged: a state problem never blocks or fails a send.
+The state directory is `.local/state/wsl-notice` under the home directory from the password database; `XDG_STATE_HOME` is not read. It is created with mode 0700, opened with `O_DIRECTORY` and `O_NOFOLLOW`, and checked on that descriptor to be owned by the user with no group or other permissions. Every file below it is opened relative to that descriptor (`dir_fd`) with `O_NOFOLLOW`, `O_NONBLOCK` and `O_CLOEXEC` (the log also with `O_APPEND` and mode 0600) and must be a regular file on `fstat`; a FIFO, a symlink or a device makes the state unusable instead of blocking the tool. It is used only when it is needed (a log record). If it cannot be used the tool warns once on stderr, writes no log record, and the exit code is unchanged: a state problem never blocks or fails a send.
 
 | Path | Content |
 |---|---|

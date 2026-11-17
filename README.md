@@ -61,7 +61,7 @@ Notification text never appears in a command line or in an environment variable.
 
 - Config: `.config/wsl-notice/config.yaml` under your home directory (taken from the password database; `HOME` and `XDG_CONFIG_HOME` are not read) plus `config.d/*.yaml` beside it; `--config <path>` selects another file, which is what a cron line uses for a non-default place; every key is documented in [config.example.yaml](config.example.yaml) and [Config](docs/interface.md#config).
 - Hooks: none in 0.x ([Hooks](docs/interface.md#hooks)).
-- Environment: there are no `WSL_NOTICE_<KEY>` overrides and no variable selects the config; precedence is flags, config, defaults. The state directory is `$XDG_STATE_HOME/wsl-notice` (an absolute path) or `.local/state/wsl-notice` under the home directory. wsl-notice reads no credentials ([Environment variables](docs/interface.md#environment-variables)).
+- Environment: there are no `WSL_NOTICE_<KEY>` overrides and no variable selects the config; precedence is flags, config, defaults. The state directory is `.local/state/wsl-notice` under the same home directory; `XDG_STATE_HOME` is not read. wsl-notice reads no credentials ([Environment variables](docs/interface.md#environment-variables)).
 - Calling from a script or agent: see [Calling from automation](docs/interface.md#calling-from-automation).
 
 ## Requirements

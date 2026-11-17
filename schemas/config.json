@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "wsl-notice/config",
+  "$id": "wsl-notice/config.json",
   "title": "wsl-notice config",
   "description": ".config/wsl-notice/config.yaml under the home directory from the password database (HOME and XDG_CONFIG_HOME are not read; --config selects another file) plus config.d/*.yaml beside it in lexical order; maps merge. Strict YAML loader. Invalid config exits 2 (config_invalid), naming the key. Precedence: flags, then config, then defaults; there are no environment overrides.",
   "type": "object",
