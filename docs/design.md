@@ -12,7 +12,7 @@ L1 primitive: show one Windows toast from a process running inside WSL. Works fu
 |---|---|---|---|
 | Windows PowerShell 5.1 through WSL interop | L0 third party | none (not an edge of the tool graph) | One short-lived process per notification; see [Toast construction](interface.md#toast-construction). |
 | Python standard library (`subprocess` through `gateway.py`) | L0 | none | No third-party runtime dependency beyond Pydantic. |
-| Pydantic (config validation) | library | none | Required by the design guide for config. |
+| Pydantic (config validation) | library | none | Required by the design guide for config. The scaffold's `pyproject.toml` does not list it yet; adding it is part of stage 2 of [plan.md](plan.md). |
 
 No tool dependencies: wsl-notice composes nothing.
 

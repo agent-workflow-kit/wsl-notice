@@ -14,18 +14,18 @@ A notification is a JSON object ([schemas/notification.json](../schemas/notifica
 
 | Field | Type | Required | Rule |
 |---|---|---|---|
-| `title` | string | no | At most `max_title` characters after sanitizing; one line (newlines become spaces). |
-| `message` | string | yes | At most 100000 characters of input. Must not be empty after sanitizing (else exit 20 `empty_message`). |
+| `title` | string | no | One line (newlines become spaces); cut at `max_title` characters after sanitizing ([Rendering](#rendering)). At most 100000 characters of input (else exit 20, reason `invalid_payload`). |
+| `message` | string | yes | At most 100000 characters of input (else exit 20, reason `invalid_payload`). Must not be empty after sanitizing (else exit 20, reason `empty_message`). |
 | `level` | `info`, `warn`, `action`, `error` | no | Default `info`. Ordered `info < warn < action < error`; the order matters to callers, not to wsl-notice. |
-| `link` | string | no | `http` or `https` URL, at most 1024 characters, no whitespace or control characters, no userinfo. Anything else exits 20 `link_invalid` (`link_scheme` for another scheme). |
+| `link` | string | no | `http` or `https` URL, at most 1024 characters, no whitespace or control characters, no userinfo. Anything else exits 20, reason `link_invalid` (`link_scheme` for another scheme). The schema checks only the syntactic gate (http or https, no userinfo, no whitespace or control characters, at most 1024 characters); the tool names the reason. |
 
-Unknown fields exit 20 `invalid_payload` (`details.pointer`). Input is read from stdin as JSON (`send --stdin-json`, also the default when stdin is not a terminal and no text flag is given), from a file (`--file <path|->`), or from flags (`--title`, `--message`, `--level`, `--link`). Flag text is untrusted and goes through the same [sanitizer](#sanitizer) as stdin text; flags exist for humans. Giving both a JSON source and a text flag exits 2 `usage`.
+Unknown fields exit 20, reason `invalid_payload` (`details.pointer`). Input is read from stdin as JSON (`send --stdin-json`, also the default when stdin is not a terminal and no text flag is given), from a file (`--file <path|->`), or from flags (`--title`, `--message`, `--level`, `--link`). Flag text is untrusted and goes through the same [sanitizer](#sanitizer) as stdin text; flags exist for humans. Giving both a JSON source and a text flag exits 2 `usage`.
 
 ### Sanitizer
 
 Applied to `title` and `message` before rendering, in this order:
 
-1. Invalid UTF-8 or lone surrogates: exit 20 `invalid_payload`.
+1. Invalid UTF-8 or lone surrogates: exit 20, reason `invalid_payload`.
 2. CRLF and CR become LF.
 3. Control characters (category Cc) except LF are removed (NUL and other C0 characters would make the toast XML builder fail); the tab becomes a space.
 4. Invisible and direction-changing format characters are removed: U+200B to U+200F, U+202A to U+202E, U+2060 to U+2064, U+2066 to U+2069, U+FEFF.
@@ -47,12 +47,13 @@ No markup escaping is done in the tool, because the text never becomes markup: t
 
 Order, with the exit code of each refusal:
 
-1. Parse and validate input (exit 2 `usage`; exit 20 `invalid_payload`, `empty_message`, `link_invalid`, `link_scheme`).
-2. Load config (exit 2 `config_invalid`). `enabled: false` prints `{"outcome": "disabled"}` and exits 22 before anything else is read.
-3. Render ([Rendering](#rendering)). With `--dry-run`, print the result with `rendered` (the JSON handed to PowerShell) and exit 0: nothing is started.
-4. Check the platform: not WSL exits 20 `not_wsl`; PowerShell not found exits 12 `tool_missing` (`details.install`).
-5. Run PowerShell ([Toast construction](#toast-construction)) and map the result to an exit code ([Exit codes](#exit-codes)).
-6. Append the [log record](#log) and print the result.
+1. Parse flags (exit 2 `usage`).
+2. Load config (exit 2 `config_invalid`). `enabled: false` prints `{"outcome": "disabled"}` and exits 22 here, before input is read.
+3. Read and validate input (exit 2 `usage` for a conflicting source; exit 20 with reason `invalid_payload`, `empty_message`, `link_invalid` or `link_scheme`).
+4. Render ([Rendering](#rendering)). With `--dry-run`, print the result with `rendered` (the JSON handed to PowerShell) and exit 0: nothing is started and nothing is logged.
+5. Check the platform: not WSL exits 20, reason `not_wsl`; PowerShell not found exits 12 `tool_missing` (`details.install`). Check the state directory (exit 12 `state_unsafe`).
+6. Run PowerShell ([Toast construction](#toast-construction)) and map the result to an exit code ([Exit codes](#exit-codes)).
+7. Append the [log record](#log) and print the result.
 
 `--dedupe-key` (grammar `^[A-Za-z0-9._:@/-]{1,128}$`) is accepted for uniformity with other notifiers and recorded (hashed) in the log; it has no effect on the toast in 0.x.
 
@@ -60,9 +61,9 @@ Order, with the exit code of each refusal:
 
 `wsl-notice validate [--probe] [--test-message]`
 
-Offline, it checks the config, that the process runs in WSL and that `powershell_bin` resolves. Prints `{ok, checks: [{name, ok, message}]}` ([schemas/cli/validate.json](../schemas/cli/validate.json)); exit 0 when every check passes, exit 2 `config_invalid`, exit 20 `not_wsl` or exit 12 `tool_missing` otherwise.
+Offline, it checks the config, that the process runs in WSL and that `powershell_bin` resolves. When the config loads, it prints `{ok, checks: [{name, ok, message}]}` ([schemas/cli/validate.json](../schemas/cli/validate.json)) and exits 0 when every check passes. Otherwise it still prints the document with `ok: false` and exits with the exit code of the first failing check: 20 with reason `not_wsl`, or 12 for a tool or host problem (`tool_missing`, `toast_failed`, `interop_failed`, `outcome_unknown`). When the config cannot load, it prints the [error envelope](#error-envelope) and exits 2 `config_invalid`.
 
-`--probe` also runs a constant script that prints the PowerShell version, to prove interop works and measure start time (reported as `powershell_version` and `start_ms`). `--test-message` (needs `--probe`) then shows one marked test toast (`wsl-notice validate: test message`) after a confirmation on `/dev/tty`, or at once with `--yes`. It cannot tell whether the toast was displayed: the user must look.
+`--probe` also runs a constant script that prints the PowerShell version, to prove interop works and measure start time (reported as the top-level fields `powershell_version` and `start_ms`). `--test-message` (needs `--probe`) then shows one marked test toast (`wsl-notice validate: test message`) after a confirmation on `/dev/tty`, or at once with `--yes`, and reports it as a check named `test_message`. It cannot tell whether the toast was displayed: the user must look.
 
 ## Global flags
 
@@ -70,7 +71,7 @@ Offline, it checks the config, that the process runs in WSL and that `powershell
 |---|---|
 | `--json` | Machine output on stdout ([Output](#output)). |
 | `--config <path>` | Config file instead of `~/.config/wsl-notice/config.yaml` (drop-ins are read next to it). |
-| `--dry-run` | `send` only: render and print, start nothing, write no log record. |
+| `--dry-run` | `send` only: render and print, start nothing, write no log record (`attempts` is null). |
 | `--yes` | `validate --test-message` only: skip the confirmation. Never overrides a refusal. |
 | `--actor <actor>` | Recorded in the log. `human:<user>` when stdin is a terminal, else `auto:unknown` (design guide section 4.4); a caller passes `auto:<name>`. |
 | `--verbose`, `--quiet` | More or less human output on stderr. |
@@ -102,7 +103,7 @@ Whether the toast was displayed, dismissed or suppressed (Focus Assist, do-not-d
 
 ## Output
 
-With `--json`, `send` prints one object ([schemas/cli/send.json](../schemas/cli/send.json)): `{outcome, tool, level, truncated, bytes, duration_ms, attempts, dedupe_key, rendered}`. `outcome` is `sent`, `dry_run` or `disabled`; `bytes` is the size of the JSON handed to PowerShell; `attempts` is 1 or 2; `rendered` is present only for a dry run. Without `--json`, human text goes to stderr and stdout is empty.
+With `--json`, `send` prints one object ([schemas/cli/send.json](../schemas/cli/send.json)): `{outcome, tool, level, truncated, bytes, duration_ms, attempts, dedupe_key, rendered}`. `outcome` is `sent`, `dry_run` or `disabled`; `bytes` is the size of the JSON handed to PowerShell; `attempts` is 1 or 2 for `sent` and null for a dry run; `rendered` is present only for a dry run. A disabled tool prints `{"outcome": "disabled"}` and nothing else. Without `--json`, human text goes to stderr and stdout is empty.
 
 Errors print the [error envelope](#error-envelope) on stdout with `--json` and a one-line message on stderr otherwise.
 
@@ -110,20 +111,26 @@ Errors print the [error envelope](#error-envelope) on stdout with `--json` and a
 
 Codes 0–21 follow design guide section 4.2. wsl-notice defines one code of 22 or above.
 
-| Exit | Meaning | Codes and reasons |
+| Exit | Meaning | Codes (reasons for exit 20) |
 |---|---|---|
 | 0 | Handed to Windows (`sent`) or a dry run. | |
 | 1 | Internal error. | `internal` |
 | 2 | Usage or invalid configuration. | `usage`, `config_invalid` |
 | 12 | Failed for a reportable reason. | `tool_missing`, `toast_failed`, `interop_failed`, `outcome_unknown`, `state_unsafe` |
-| 20 | Refused before sending; `reason` required. | `invalid_payload`, `empty_message`, `link_invalid`, `link_scheme`, `not_wsl` |
+| 20 | Refused before sending; code `refused`, `reason` required. | Reasons: `invalid_payload`, `empty_message`, `link_invalid`, `link_scheme`, `not_wsl` |
 | 22 | Nothing sent: the tool is disabled in config. | `disabled` (not an error; output `{"outcome": "disabled"}`) |
 
 Exits 10, 11, 13 and 21 are never used. A caller treats exit 22 as a successful no-op.
 
 ### Error envelope
 
-`{"error": {"code", "message", "reason", "details", "retryable", "retry_after_s", "unknown_outcome"}}` ([schemas/cli/error.json](../schemas/cli/error.json)); only `code` and `message` are required. Exit 20 has `code: refused` with `reason` set; `retryable`, `retry_after_s` (always null here) and `unknown_outcome` are set on exit 12 and null elsewhere. `details` by code: `config_invalid` → `key`; `invalid_payload` → `pointer`; `tool_missing` → `install`; `toast_failed` → `stage`.
+`{"error": {"code", "message", "reason", "details", "retryable", "retry_after_s", "unknown_outcome"}}` ([schemas/cli/error.json](../schemas/cli/error.json)); only `code` and `message` are required. `reason` is set on exit 20 (`code: refused`) and null elsewhere. `retryable` and `unknown_outcome` are booleans on exit 12 and null elsewhere; `retry_after_s` is always null here. `details` by code or reason: `config_invalid` → `key`; reason `invalid_payload` → `pointer`; `tool_missing` → `install`; `toast_failed` → `stage`.
+
+| Exit 12 code | `retryable` | `unknown_outcome` |
+|---|---|---|
+| `tool_missing`, `state_unsafe`, `toast_failed` | `false` | `false` |
+| `interop_failed` | `true` | `false` |
+| `outcome_unknown` | `true` | `true` |
 
 ## Hooks
 
@@ -141,7 +148,7 @@ None in 0.x. wsl-notice shows one toast and takes no policy decisions; gating an
 | `level_prefix` | `{info: "", warn: "WARN:", action: "ACTION:", error: "ERROR:"}` | Title prefixes, at most 16 characters each. |
 | `max_title` | `100` | Title limit, 20 to 256. |
 | `max_body` | `1000` | Message limit, 100 to 5000. |
-| `timeout` | `10s` | Budget for one `send` (PowerShell takes about one second), 2s to 60s. |
+| `timeout` | `10s` | Budget for one `send` (PowerShell takes about one second), 2s to 60s. A number of seconds or a string like `10s`, `1m` or `500ms`; a value out of range exits 2 `config_invalid` (`details.key`). |
 | `log` | `true` | `false` writes no `log.jsonl`. |
 
 ## Environment variables
@@ -150,7 +157,7 @@ None in 0.x. wsl-notice shows one toast and takes no policy decisions; gating an
 
 ## Log
 
-`~/.local/state/wsl-notice/log.jsonl` (respecting `XDG_STATE_HOME`), mode 0600, appended without following symlinks; one record per `send` that reaches step 5 and per refusal or failure after step 1 ([schemas/log.json](../schemas/log.json)): `{ts, tool, version, outcome, exit, code, reason, level, bytes, truncated, duration_ms, attempts, message_sha256, dedupe_key_sha256, actor, actor_source}`. `message_sha256` and `dedupe_key_sha256` are the first 16 hex characters of the SHA-256 of the notification JSON and of the key. Records never contain a title, message or link. The file rotates at 1 MiB, keeping 3 files. A log write failure warns on stderr and never changes the exit code. There is no audit file: a toast changes nothing in a system of record.
+`~/.local/state/wsl-notice/log.jsonl` (respecting `XDG_STATE_HOME`), mode 0600, appended without following symlinks; one record per `send` that reaches step 3 or later and ends in `sent`, `refused` (exit 20), `failed` (exit 12 except an unknown outcome) or `outcome_unknown` ([schemas/log.json](../schemas/log.json)). Exit 1, exit 2, exit 22 (`disabled`) and dry runs write no record. Fields: `{ts, tool, version, outcome, exit, code, reason, level, bytes, truncated, duration_ms, attempts, message_sha256, dedupe_key_sha256, actor, actor_source}`; every field is always present and nullable ones are null when unknown. `outcome` is `sent`, `refused`, `failed` or `outcome_unknown`; `code` is `refused` for exit 20, the error code for exit 12 and null on success; `reason` is null unless the outcome is `refused`; `actor_source` is `flag` (from `--actor`), `tty` (stdin is a terminal) or `default` (`auto:unknown`). `message_sha256` and `dedupe_key_sha256` are the first 16 hex characters of the SHA-256 of the notification JSON and of the key. Records never contain a title, message or link. The file rotates at 1 MiB, keeping 3 files. A log write failure warns on stderr and never changes the exit code. There is no audit file: a toast changes nothing in a system of record.
 
 ## Files
 
@@ -180,4 +187,4 @@ None in v1.
 
 ## Platform notes
 
-WSL2 on Windows 10 or 11 with Windows PowerShell 5.1 reachable through interop is the only supported platform. The tool refuses elsewhere with exit 20 `not_wsl`.
+WSL2 on Windows 10 or 11 with Windows PowerShell 5.1 reachable through interop is the only supported platform. The tool refuses elsewhere with exit 20, reason `not_wsl`.

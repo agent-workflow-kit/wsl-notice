@@ -35,7 +35,7 @@ wsl-notice validate --probe --test-message
 | Command | Purpose |
 |---|---|
 | `wsl-notice send [--stdin-json \| --file <path>\|-] [--title <t>] [--message <m>] [--level <l>] [--link <url>] [--dedupe-key <k>]` | Show one toast. |
-| `wsl-notice validate [--probe] [--test-message]` | Check the config, WSL and PowerShell; `--probe` also starts PowerShell once, `--test-message` shows a marked test toast. |
+| `wsl-notice validate [--probe] [--test-message]` | Check the config, WSL and PowerShell; `--probe` also starts PowerShell once, `--test-message` shows a marked test toast. Exits 0 when every check passes, otherwise with the exit code of the first failing check. |
 
 Global flags: `--json`, `--config`, `--dry-run`, `--yes`, `--actor`, `--verbose`, `--quiet`, `--version` ([Global flags](docs/interface.md#global-flags)).
 
@@ -45,7 +45,7 @@ Notification text never appears in a command line or in an environment variable.
 
 ## Exit codes
 
-0 handed to Windows (or a dry run); 1 internal error; 2 usage or invalid config; 12 failed (PowerShell missing, toast failed, interop failed, timeout with unknown outcome); 20 refused before sending with a `reason` (invalid payload, empty message, bad link, not WSL); 22 disabled in config (a successful no-op). See [Exit codes](docs/interface.md#exit-codes).
+0 handed to Windows (or a dry run); 1 internal error; 2 usage or invalid config; 12 failed (PowerShell missing, toast failed, interop failed, timeout with unknown outcome); 20 refused before sending, code `refused` with a `reason` (`invalid_payload`, `empty_message`, `link_invalid`, `link_scheme`, `not_wsl`); 22 disabled in config (a successful no-op, `{"outcome": "disabled"}`). Every `send` that reaches input validation and ends in `sent`, a refusal or a failure is logged; dry runs and exit 22 are not. See [Exit codes](docs/interface.md#exit-codes).
 
 ## Limits
 

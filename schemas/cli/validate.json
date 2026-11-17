@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "wsl-notice/cli/validate.json",
   "title": "validate output",
-  "description": "Printed with --json. ok is true only when every check passes (exit 0); on a failed check it is printed with ok false and the exit code is 2, 20 or 12.",
+  "description": "Printed with --json when the config loads. ok is true only when every check passes (exit 0); otherwise it is printed with ok false and the exit code of the first failing check (20 with a reason, 12 for tool or host problems). When the config cannot load, the error envelope is printed instead (exit 2). With --probe: powershell_version and start_ms; with --test-message: a check named test_message.",
   "type": "object",
   "properties": {
     "ok": {
@@ -15,7 +15,8 @@
         "properties": {
           "name": {
             "type": "string",
-            "pattern": "^[a-z][a-z0-9_]{0,63}$"
+            "pattern": "^[a-z][a-z0-9_]{0,63}$",
+            "description": "For example config, wsl, powershell, test_message (the --test-message result)."
           },
           "ok": {
             "type": "boolean"
@@ -49,6 +50,14 @@
     "checks"
   ],
   "additionalProperties": false,
+  "dependentRequired": {
+    "powershell_version": [
+      "start_ms"
+    ],
+    "start_ms": [
+      "powershell_version"
+    ]
+  },
   "allOf": [
     {
       "if": {

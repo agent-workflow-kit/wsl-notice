@@ -7,7 +7,8 @@
 # WSL_NOTICE_MAX_TITLE, WSL_NOTICE_MAX_BODY, WSL_NOTICE_TIMEOUT and WSL_NOTICE_LOG set the
 # matching scalar keys. level_prefix cannot be set from the environment.
 # Durations: seconds as a number, or <number><unit> with unit ms, s or m ("10s"); a bare number
-# string ("10") means seconds.
+# string ("10") means seconds. A value outside the stated range exits 2 (config_invalid) naming
+# the key.
 # Schema: schemas/config.json. Invalid config exits 2 (config_invalid), naming the key.
 
 # false makes send print {"outcome": "disabled"} and exit 22 without starting anything.

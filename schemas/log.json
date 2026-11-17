@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "wsl-notice/log.json",
   "title": "wsl-notice log.jsonl record",
-  "description": "One record per send that reaches the PowerShell step and per refusal or failure after input parsing. A log write failure warns only. Never a title, message or link.",
+  "description": "One record per send that reaches input reading (step 3) or later and ends in sent, refused (exit 20), failed (exit 12 except unknown) or outcome_unknown. Not logged: exit 1, exit 2, exit 22 (disabled) and dry runs. A log write failure warns only. Never a title, message or link.",
   "type": "object",
   "properties": {
     "ts": {
@@ -18,14 +18,17 @@
     "outcome": {
       "enum": [
         "sent",
-        "disabled",
         "refused",
         "failed",
         "outcome_unknown"
       ]
     },
     "exit": {
-      "$ref": "defs.json#/$defs/exit_code"
+      "enum": [
+        0,
+        12,
+        20
+      ]
     },
     "code": {
       "oneOf": [
@@ -33,13 +36,10 @@
           "$ref": "defs.json#/$defs/error_code"
         },
         {
-          "const": "disabled"
-        },
-        {
           "type": "null"
         }
       ],
-      "description": "The error code, disabled for exit 22, null on success."
+      "description": "refused for exit 20, the exit 12 error code for a failure, null on success."
     },
     "reason": {
       "oneOf": [
@@ -49,7 +49,8 @@
         {
           "type": "null"
         }
-      ]
+      ],
+      "description": "Null unless the outcome is refused."
     },
     "level": {
       "oneOf": [
@@ -166,16 +167,19 @@
     {
       "if": {
         "properties": {
-          "exit": {
-            "const": 20
+          "outcome": {
+            "const": "refused"
           }
         },
         "required": [
-          "exit"
+          "outcome"
         ]
       },
       "then": {
         "properties": {
+          "exit": {
+            "const": 20
+          },
           "code": {
             "const": "refused"
           },
@@ -188,6 +192,74 @@
         "properties": {
           "reason": {
             "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "exit": {
+            "const": 20
+          }
+        },
+        "required": [
+          "exit"
+        ]
+      },
+      "then": {
+        "properties": {
+          "outcome": {
+            "const": "refused"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "outcome": {
+            "const": "failed"
+          }
+        },
+        "required": [
+          "outcome"
+        ]
+      },
+      "then": {
+        "properties": {
+          "exit": {
+            "const": 12
+          },
+          "code": {
+            "enum": [
+              "tool_missing",
+              "toast_failed",
+              "interop_failed",
+              "state_unsafe"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "outcome": {
+            "const": "outcome_unknown"
+          }
+        },
+        "required": [
+          "outcome"
+        ]
+      },
+      "then": {
+        "properties": {
+          "exit": {
+            "const": 12
+          },
+          "code": {
+            "const": "outcome_unknown"
           }
         }
       }

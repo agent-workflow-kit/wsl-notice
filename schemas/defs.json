@@ -131,7 +131,7 @@
               "type": "null"
             }
           ],
-          "description": "On exit 20 (code refused)."
+          "description": "Set on exit 20 (code refused); null elsewhere."
         },
         "details": {
           "type": [
@@ -139,7 +139,7 @@
             "null"
           ],
           "x-untrusted": true,
-          "description": "By code: config_invalid has key; invalid_payload has pointer; tool_missing has install; toast_failed has stage."
+          "description": "By code or reason: config_invalid has key; reason invalid_payload has pointer; tool_missing has install; toast_failed has stage."
         },
         "retryable": {
           "type": [
@@ -323,6 +323,9 @@
           },
           "then": {
             "properties": {
+              "retryable": {
+                "const": false
+              },
               "unknown_outcome": {
                 "const": false
               }
