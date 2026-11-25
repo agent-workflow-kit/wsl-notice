@@ -1,6 +1,6 @@
 [project]
 name = "wsl-notice"
-version = "0.0.1"
+version = "0.0.2"
 description = "Show a Windows toast notification from WSL"
 readme = "README.md"
 requires-python = ">=3.12"
